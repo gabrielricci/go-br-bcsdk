@@ -1,0 +1,6 @@
+package: github.com/sumup/go-sdk
+import:
+- package: github.com/currantlabs/ble
+  subpackages:
+  - darwin
+- package: github.com/howeyc/crc16

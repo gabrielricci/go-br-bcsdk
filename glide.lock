@@ -1,0 +1,34 @@
+hash: eb6e4f5e256494241a36639a8dce4e1aadd434513962812e512e7288fbc2597b
+updated: 2017-06-26T19:07:15.061391083+03:00
+imports:
+- name: github.com/currantlabs/ble
+  version: e7136650fe84d0fe2a2a19abc4e059e9f67bfca0
+  subpackages:
+  - darwin
+- name: github.com/howeyc/crc16
+  version: 58da63c846043d0bea709c8d47039df06577d6d9
+- name: github.com/mattn/go-colorable
+  version: 941b50ebc6efddf4c41c8e4537a5f68a4e686b24
+- name: github.com/mattn/go-isatty
+  version: fc9e8d8ef48496124e79ae0df75490096eccf6fe
+- name: github.com/mgutz/ansi
+  version: 9520e82c474b0a04dd04f8a40959027271bab992
+- name: github.com/mgutz/logxi
+  version: aebf8a7d67ab4625e0fd4a665766fef9a709161b
+  subpackages:
+  - v1
+- name: github.com/pkg/errors
+  version: c605e284fe17294bda444b34710735b29d1a9d90
+- name: github.com/raff/goble
+  version: f6ecf99ef03749e4914b6f23547fbd7e4d363858
+  subpackages:
+  - xpc
+- name: golang.org/x/net
+  version: 5f8847ae0d0e90b6a9dc8148e7ad616874625171
+  subpackages:
+  - context
+- name: golang.org/x/sys
+  version: c23410a886927bab8ca5e80b08af6a56faeb330d
+  subpackages:
+  - unix
+testImports: []
