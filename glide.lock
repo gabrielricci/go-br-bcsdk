@@ -1,10 +1,14 @@
-hash: eb6e4f5e256494241a36639a8dce4e1aadd434513962812e512e7288fbc2597b
-updated: 2017-06-26T19:07:15.061391083+03:00
+hash: 840f79de9ceb5333e49ea3f68a0f1b6cdd333b681f60ad95dfba86377642ba28
+updated: 2017-06-29T17:36:23.355071551+03:00
 imports:
+- name: github.com/beevik/etree
+  version: abae5fc32af8862e420d52e686a7e6ec14111685
 - name: github.com/currantlabs/ble
   version: e7136650fe84d0fe2a2a19abc4e059e9f67bfca0
   subpackages:
   - darwin
+- name: github.com/google/uuid
+  version: 064e2069ce9c359c118179501254f67d7d37ba24
 - name: github.com/howeyc/crc16
   version: 58da63c846043d0bea709c8d47039df06577d6d9
 - name: github.com/mattn/go-colorable
@@ -24,11 +28,11 @@ imports:
   subpackages:
   - xpc
 - name: golang.org/x/net
-  version: 5f8847ae0d0e90b6a9dc8148e7ad616874625171
+  version: c81e7f25cb61200d8bf0ae971a0bac8cb638d5bc
   subpackages:
   - context
 - name: golang.org/x/sys
-  version: c23410a886927bab8ca5e80b08af6a56faeb330d
+  version: 90796e5a05ce440b41c768bd9af257005e470461
   subpackages:
   - unix
 testImports: []

@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,36 +22,55 @@ const (
 	CRCPolynom = 0x1021
 )
 
+type notifreceiver func(*CommandResponse)
+
 type MPOSDevice struct {
-	writerCharacteristic *ble.Characteristic
+	bleClient            ble.Client
 	readerCharacteristic *ble.Characteristic
+	writerCharacteristic *ble.Characteristic
 
-	bleClient ble.Client
-
-	responseChannel chan []byte
+	responseChannel      chan *CommandResponse
+	notificationChannel  chan *CommandResponse
+	notificationHandlers []notifreceiver
 }
 
-func bufferResponseFromDevice(input *chan []byte, output *chan []byte) {
+func bufferResponseFromDevice(input chan []byte,
+	responseChannel chan *CommandResponse,
+	notificationChannel chan *CommandResponse,
+) {
 	var buf bytes.Buffer
 	var crcLeft int
 
 	for { // needs to read from channel ad eternum
-		data := <-*input
+		data := <-input
 		for _, b := range data {
 			buf.WriteByte(b)
 
 			if crcLeft > 0 {
 				crcLeft--
 				if crcLeft == 0 {
-					*output <- buf.Bytes()
+					// fmt.Printf("got % X | %q\n", buf.Bytes(), buf.Bytes())
+					response := NewCommandResponse(buf.Bytes())
+
+					if response.CommandName == "NTM" {
+						notificationChannel <- response
+					} else {
+						responseChannel <- response
+					}
+
 					buf.Reset()
 				}
 
 				continue
 			}
 
+			if b == ByteAck {
+				buf.Reset()
+				continue
+			}
+
 			if b == ByteNak {
-				*output <- buf.Bytes()
+				responseChannel <- &CommandResponse{Acknowledged: false}
 				buf.Reset()
 				continue
 			}
@@ -62,8 +80,19 @@ func bufferResponseFromDevice(input *chan []byte, output *chan []byte) {
 			}
 		}
 	}
+}
 
-	fmt.Println("exiting")
+func notifySubscribers(input chan *CommandResponse, subscribers *[]notifreceiver) {
+	for {
+		command := <-input
+		if command.CommandName != "NTM" {
+			continue
+		}
+
+		for _, subscriber := range *subscribers {
+			subscriber(command)
+		}
+	}
 }
 
 func NewMPOSDevice(cln ble.Client) *MPOSDevice {
@@ -90,15 +119,18 @@ func NewMPOSDevice(cln ble.Client) *MPOSDevice {
 	}
 
 	rawResponseChannel := make(chan []byte)
-	bufferedResponseChannel := make(chan []byte)
+	bufferedResponseChannel := make(chan *CommandResponse)
+	bufferedNotificationChannel := make(chan *CommandResponse)
 
-	notificationHandler := func(req []byte) {
+	readerHandler := func(req []byte) {
 		rawResponseChannel <- req
 	}
 
-	go bufferResponseFromDevice(&rawResponseChannel, &bufferedResponseChannel)
+	go bufferResponseFromDevice(rawResponseChannel,
+		bufferedResponseChannel,
+		bufferedNotificationChannel)
 
-	if err := cln.Subscribe(reader, true, notificationHandler); err != nil {
+	if err := cln.Subscribe(reader, true, readerHandler); err != nil {
 		fmt.Printf("Failed to subscribe characteristic, err: %s\n", err)
 	}
 
@@ -107,21 +139,23 @@ func NewMPOSDevice(cln ble.Client) *MPOSDevice {
 		readerCharacteristic: reader,
 		bleClient:            cln,
 		responseChannel:      bufferedResponseChannel,
+		notificationChannel:  bufferedNotificationChannel,
 	}
+
+	go notifySubscribers(bufferedNotificationChannel, &device.notificationHandlers)
 
 	return &device
 }
 
-func (device *MPOSDevice) CallMethod(methodName string, params []string) byte {
+func (device *MPOSDevice) CallMethod(methodName string, params []string) *CommandResponse {
 	var request bytes.Buffer
 	//var response bytes.Buffer
 
 	request.WriteByte(ByteSyn)
 	request.Write([]byte(methodName))
 
-	for idx, param := range params {
+	for _, param := range params {
 		paddedParamSize := PadLeft(len(param), 3, "0")
-		fmt.Println("Param", idx, "has", paddedParamSize, "bytes (padded)")
 		request.Write([]byte(paddedParamSize))
 		request.Write([]byte(param))
 	}
@@ -133,57 +167,22 @@ func (device *MPOSDevice) CallMethod(methodName string, params []string) byte {
 	binary.BigEndian.PutUint16(crcBytes, crc)
 	request.Write(crcBytes)
 
-	fmt.Printf("sent % X | %q\n", request.Bytes(), request.Bytes())
+	// fmt.Printf("sent % X | %q\n", request.Bytes(), request.Bytes())
 
 	device.bleClient.WriteCharacteristic(device.writerCharacteristic, request.Bytes(), true)
 
 	select {
-	case bArray := <-device.responseChannel:
-		fmt.Printf("got % X | %q\n", bArray, bArray)
-		fmt.Println(device.parseResponse(methodName, bArray))
+	case response := <-device.responseChannel:
+		return response
 
 	case <-time.After(60 * time.Second):
 		fmt.Println("Method timeout")
 		break
 	}
 
-	return ByteNull
+	return nil
 }
 
-func (device *MPOSDevice) parseResponse(name string, rawResponse []byte) *CommandResponse {
-	var params []string
-
-	response := CommandResponse{
-		CommandName:  name,
-		Acknowledged: false,
-	}
-
-	if rawResponse[0] == ByteAck && rawResponse[1] == ByteSyn {
-		response.Acknowledged = true
-	} else {
-		return &response
-	}
-
-	rawResponse = rawResponse[2:]
-	if name != string(rawResponse[0:3]) {
-		response.Acknowledged = false
-		return &response
-	}
-
-	rawResponse = rawResponse[3:]
-	response.ResponseCode = string(rawResponse[0:3])
-
-	rawResponse = rawResponse[3:]
-	for rawResponse[0] != ByteEtb {
-		paramLen, _ := strconv.Atoi(string(rawResponse[0:3]))
-		endPos := 3 + paramLen
-		params = append(params, string(rawResponse[3:endPos]))
-		rawResponse = rawResponse[endPos:]
-	}
-
-	if rawResponse[0] == ByteEtb {
-		response.Parameters = params
-	}
-
-	return &response
+func (device *MPOSDevice) SubscribeToNotifications(handler notifreceiver) {
+	device.notificationHandlers = append(device.notificationHandlers, handler)
 }
