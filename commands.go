@@ -47,6 +47,35 @@ func NewCommandResponse(rawResponse []byte) *CommandResponse {
 	return &response
 }
 
+func CallEncryptBuffer(device *MPOSDevice) (string, error) {
+	response := device.CallMethod("ENB", []string{
+		"3230000000000000000000000000000000012345678901234567891",
+	})
+	if response.ResponseCode != "000" {
+		return "", errors.New("Invalid response received")
+	}
+
+	return response.Parameters[0], nil
+}
+
+func CallGetDUKPT(device *MPOSDevice) (string, error) {
+	response := device.CallMethod("GDU", []string{"323"})
+	if response.ResponseCode != "000" {
+		return "", errors.New("Invalid response received")
+	}
+
+	return response.Parameters[0], nil
+}
+
+func CallGetInfo(device *MPOSDevice, acquirerCode string) (string, error) {
+	response := device.CallMethod("GIN", []string{acquirerCode})
+	if response.ResponseCode != "000" {
+		return "", errors.New("Invalid response received")
+	}
+
+	return response.Parameters[0], nil
+}
+
 func CallDisplay(device *MPOSDevice, message string) (bool, error) {
 	response := device.CallMethod("DSP", []string{message})
 	if response.ResponseCode != "000" {
@@ -71,7 +100,7 @@ func CallGetCard(device *MPOSDevice, amount float32, tableTimestamp string) (err
 	cardData := make(map[string]string)
 
 	acquirerCode := "00"
-	applicationCode := "99"
+	applicationCode := "01"
 	formattedAmount := PadLeft(int(amount*100), 12, "0")
 	date := time.Now().Format("060102")
 	time := time.Now().Format("150405")

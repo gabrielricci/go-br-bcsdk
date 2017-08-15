@@ -29,7 +29,7 @@ func main() {
 	ble.SetDefaultDevice(d)
 
 	filter := func(a ble.Advertisement) bool {
-		return strings.ToUpper(a.LocalName()) == strings.ToUpper("PAX-77000087")
+		return strings.ToUpper(a.LocalName()) == strings.ToUpper("PAX-77253402")
 	}
 
 	fmt.Printf("Searching for the device (timeout: %s)\n", scanTimeout)
@@ -56,22 +56,22 @@ func main() {
 	connectedDevice.CallMethod("OPN", []string{})
 
 	input := ""
-	fmt.Println("Do you want to try this amazing thing and place a transaction? (yes/no)")
+	fmt.Println("Do you want to try out this thing and place a transaction? (yes/no)")
 	fmt.Scanln(&input)
 
 	if input == "yes" {
 		rawAmount := ""
-		fmt.Println("Lets get to it then, please enter the transaction amount: ")
+		fmt.Println("Lets get to it then. Please enter the transaction amount: ")
 		fmt.Scanln(&rawAmount)
 		amount, _ := strconv.ParseFloat(rawAmount, 32)
 
-		fmt.Println("Now please insert your card in the reader.")
+		fmt.Println("Now please insert your card in the reader...")
 
 		_, tableTimestamp := CallGetTimestamp(connectedDevice)
 		_, cardData := CallGetCard(connectedDevice, float32(amount), tableTimestamp)
 
 		cvv := ""
-		fmt.Println("CVV?: ")
+		fmt.Println("Please enter your CVV: ")
 		fmt.Scanln(&cvv)
 
 		expiryDate, _ := time.Parse(
